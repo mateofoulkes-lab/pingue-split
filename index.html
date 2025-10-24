@@ -28,7 +28,7 @@
     <button id="installBtn" hidden>Instalar</button>
   </header>
 
-  <main id="app" class="card">
+  <main id="app">
     <section id="authSection">
       <h2>Ingresá</h2>
       <p class="muted">Solo las dos cuentas autorizadas pueden ver/editar.</p>
@@ -45,91 +45,189 @@
     </section>
 
     <section id="appSection" hidden>
-
-      <div id="balanceBanner" class="balance-banner" hidden>
-        <div class="muted small">Estado actual</div>
-        <div id="balanceText"><strong>Calculando…</strong></div>
-      </div>
-
-      <div class="row space-between">
-        <div>
-          <h2>Gastos del período</h2>
-          <div class="muted small">Grupo: <span id="groupName"></span></div>
+      <div class="app-shell">
+        <div class="topbar">
+          <button id="profileBtn" class="profile-btn" aria-haspopup="true" aria-expanded="false">
+            <img id="profilePhoto" alt="Foto de perfil" src="icons/icon-192.png">
+          </button>
+          <div class="topbar-info">
+            <h2 class="topbar-title">Gastos compartidos</h2>
+            <div class="muted small">Grupo: <span id="groupName"></span></div>
+          </div>
+          <button id="addExpenseBtn" class="fab" aria-label="Agregar gasto">
+            <span>+</span>
+          </button>
         </div>
-        <div>
-          <button id="signOutBtn" class="btn ghost">Salir</button>
+
+        <div id="profileMenu" class="profile-menu" hidden>
+          <div class="profile-menu__user">
+            <img id="profileMenuPhoto" alt="Foto de perfil" src="icons/icon-192.png">
+            <div>
+              <div id="profileName" class="profile-menu__name"></div>
+              <div id="profileEmail" class="muted small"></div>
+            </div>
+          </div>
+          <button id="signOutBtn" class="profile-menu__action">Salir</button>
+        </div>
+
+        <div class="filters row gap wrap mt">
+          <label class="filter-chip">Mes
+            <input id="monthPicker" type="month">
+          </label>
+          <label class="filter-chip">Filtro
+            <select id="filterPayer">
+              <option value="ALL">Todos</option>
+              <option value="A" id="filterPayerA">Pagó A</option>
+              <option value="B" id="filterPayerB">Pagó B</option>
+              <option value="SETTLEMENT">Solo settlements</option>
+            </select>
+          </label>
+          <button id="exportBtn" class="btn ghost">Exportar CSV</button>
+        </div>
+
+        <section class="card list-card mt">
+          <div class="card-heading">
+            <h3>Gastos del período</h3>
+            <div class="muted small">Actualizado en tiempo real</div>
+          </div>
+          <ul id="list" class="list"></ul>
+        </section>
+
+        <section class="card summary-card mt">
+          <div class="card-heading">
+            <h3>Resumen</h3>
+            <div class="muted small">Detalle rápido del mes</div>
+          </div>
+          <div id="summary" class="summary"></div>
+        </section>
+
+        <div id="balanceBanner" class="status-bar mt" hidden>
+          <div>
+            <div class="muted small">Balance actual</div>
+            <div id="balanceText" class="status-text">Calculando…</div>
+          </div>
+          <button id="openSettlementBtn" class="status-btn" type="button">
+            <span class="icon" aria-hidden="true">🤝</span>
+            <span class="label">Quedar a mano</span>
+          </button>
         </div>
       </div>
-
-      <form id="expenseForm" class="grid mt">
-        <input id="expDate" type="date" required>
-        <input id="expDesc" type="text" placeholder="Descripción" required>
-        <input id="expAmt" type="number" inputmode="decimal" step="0.01" placeholder="Monto" required>
-        <select id="expPayer">
-          <option value="A">Pagó A</option>
-          <option value="B">Pagó B</option>
-        </select>
-        <input id="expCat" type="text" placeholder="Categoría (opcional)" list="catList">
-<datalist id="catList">
-  <option value="supermercado">
-  <option value="feria">
-  <option value="polleria">
-  <option value="carne">
-  <option value="internet">
-  <option value="luz">
-  <option value="gas">
-  <option value="municipales">
-  <option value="cem">
-  <option value="marina">
-</datalist>
-        <button class="btn" type="submit">Agregar</button>
-      </form>
-
-      <div class="row gap mt">
-        <label>Mes:
-          <input id="monthPicker" type="month">
-        </label>
-        <label>Filtro:
-          <select id="filterPayer">
-            <option value="ALL">Todos</option>
-            <option value="A">Pagó A</option>
-            <option value="B">Pagó B</option>
-            <option value="SETTLEMENT">Solo settlements</option>
-          </select>
-        </label>
-        <button id="exportBtn" class="btn ghost">Exportar CSV</button>
-      </div>
-
-      <section class="card mt">
-        <h3>Resumen</h3>
-        <div id="summary" class="summary"></div>
-      </section>
-
-      <section class="card mt">
-        <h3>Quedar a mano (settlement)</h3>
-        <div class="kicker">Podés hacerlo cuando quieras (no solo fin de mes).</div>
-        <form id="settleForm" class="grid">
-          <input id="setDate" type="date" required>
-          <select id="setDir">
-            <option value="A2B">A → B</option>
-            <option value="B2A">B → A</option>
-          </select>
-          <input id="setAmt" type="number" inputmode="decimal" step="0.01" placeholder="Monto" required>
-          <input id="setNote" type="text" placeholder="Nota (opcional)">
-          <button type="submit" class="btn success">Registrar pago</button>
-          <button id="settleAllBtn" class="btn warn" type="button" title="Usa el saldo actual para quedar a cero">Saldar ahora</button>
-        </form>
-        <div class="muted small mt">“Registrar pago” crea un movimiento que no afecta el gasto total, solo ajusta el saldo entre A y B.</div>
-      </section>
-
-      <section class="card mt">
-        <h3>Lista</h3>
-        <ul id="list" class="list"></ul>
-      </section>
     </section>
   </main>
 
   <footer class="muted small center">Hecho con ♥ — funciona offline y sincroniza cuando hay internet.</footer>
+
+  <div id="expenseModal" class="modal hidden" role="dialog" aria-modal="true" aria-labelledby="expenseTitle">
+    <div class="modal__panel">
+      <header class="modal__header">
+        <div>
+          <h3 id="expenseTitle">Nuevo gasto</h3>
+          <p class="muted small">Registrá en segundos quién pagó y cómo se reparte.</p>
+        </div>
+        <button class="close-btn" data-close="expenseModal" aria-label="Cerrar">×</button>
+      </header>
+      <form id="expenseForm" class="form-grid">
+        <label class="field">Fecha
+          <input id="expDate" type="date" required>
+        </label>
+        <label class="field">Descripción
+          <input id="expDesc" type="text" placeholder="Descripción" required>
+        </label>
+        <label class="field">Monto total
+          <input id="expAmt" type="number" inputmode="decimal" step="0.01" min="0" placeholder="0,00" required>
+        </label>
+        <label class="field">Pagó
+          <select id="expPayer"></select>
+        </label>
+        <label class="field">Categoría (opcional)
+          <input id="expCat" type="text" placeholder="Categoría" list="catList">
+        </label>
+        <label class="field">Cómo repartir
+          <select id="splitType">
+            <option value="even">Mitad y mitad</option>
+            <option value="percent">Por porcentaje</option>
+            <option value="amount">Por monto fijo</option>
+          </select>
+        </label>
+
+        <div id="percentFields" class="field split-fields hidden">
+          <div class="field-group">
+            <label id="percentLabelA"></label>
+            <input id="splitPercentA" type="number" inputmode="decimal" step="0.01" min="0" max="100" placeholder="50">
+          </div>
+          <div class="field-group">
+            <label id="percentLabelB"></label>
+            <input id="splitPercentB" type="number" inputmode="decimal" step="0.01" min="0" max="100" placeholder="50">
+          </div>
+        </div>
+
+        <div id="amountFields" class="field split-fields hidden">
+          <div class="field-group">
+            <label id="amountLabelA"></label>
+            <input id="splitAmountA" type="number" inputmode="decimal" step="0.01" min="0" placeholder="0,00">
+          </div>
+          <div class="field-group">
+            <label id="amountLabelB"></label>
+            <input id="splitAmountB" type="number" inputmode="decimal" step="0.01" min="0" placeholder="0,00">
+          </div>
+        </div>
+
+        <div class="form-actions">
+          <button class="btn ghost" type="button" data-close="expenseModal">Cancelar</button>
+          <button class="btn" type="submit">Guardar gasto</button>
+        </div>
+      </form>
+      <datalist id="catList">
+        <option value="supermercado">
+        <option value="feria">
+        <option value="polleria">
+        <option value="carne">
+        <option value="internet">
+        <option value="luz">
+        <option value="gas">
+        <option value="municipales">
+        <option value="cem">
+        <option value="marina">
+      </datalist>
+    </div>
+  </div>
+
+  <div id="settlementModal" class="modal hidden" role="dialog" aria-modal="true" aria-labelledby="settlementTitle">
+    <div class="modal__panel">
+      <header class="modal__header">
+        <div>
+          <h3 id="settlementTitle">Quedar a mano</h3>
+          <p class="muted small">Registrá un pago entre ustedes para ajustar el balance.</p>
+        </div>
+        <button class="close-btn" data-close="settlementModal" aria-label="Cerrar">×</button>
+      </header>
+      <form id="settleForm" class="form-grid">
+        <label class="field">Fecha
+          <input id="setDate" type="date" required>
+        </label>
+        <label class="field">Dirección
+          <select id="setDir">
+            <option value="A2B"></option>
+            <option value="B2A"></option>
+          </select>
+        </label>
+        <label class="field">Monto
+          <input id="setAmt" type="number" inputmode="decimal" step="0.01" min="0" placeholder="0,00" required>
+        </label>
+        <label class="field">Nota (opcional)
+          <input id="setNote" type="text" placeholder="Transferencia, efectivo…">
+        </label>
+        <div class="form-actions">
+          <button class="btn warn" id="settleAllBtn" type="button" title="Usa el saldo actual para quedar a cero">Saldar ahora</button>
+          <div class="actions-right">
+            <button class="btn ghost" type="button" data-close="settlementModal">Cancelar</button>
+            <button type="submit" class="btn success">Registrar pago</button>
+          </div>
+        </div>
+        <p class="muted small">Este movimiento no suma al gasto total, solo equilibra la balanza.</p>
+      </form>
+    </div>
+  </div>
 
   <script src="app.js"></script>
 </body>
