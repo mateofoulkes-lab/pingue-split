@@ -1,0 +1,61 @@
+/* Soft gradient + glass look */
+*{box-sizing:border-box}
+:root{
+  --bg1:#0b1220; --bg2:#0e1b2e; --card:#0e1626aa; --card-solid:#0f172acc;
+  --stroke:#26304399; --ink:#e6edf3; --muted:#a9b6c7; --brand:#38bdf8; --brand-2:#60a5fa; --ok:#34d399; --warn:#fbbf24; --danger:#fb7185;
+  --radius:18px; --pad:16px; --shadow:0 10px 30px rgba(0,0,0,.25), inset 0 1px 0 rgba(255,255,255,.03);
+}
+html,body{margin:0;padding:0;font-family:Inter,system-ui,-apple-system,Segoe UI,Roboto,Ubuntu,Arial,sans-serif;color:var(--ink);
+  background: radial-gradient(1200px 800px at 20% -10%, #132034 10%, transparent 60%), linear-gradient(180deg, var(--bg2), var(--bg1));
+  min-height:100vh;
+}
+header{display:flex;align-items:center;justify-content:space-between;padding:12px 16px;background:linear-gradient(180deg,#0f172a, #0b1220 90%);
+  position:sticky;top:0;border-bottom:1px solid #1f2a44;backdrop-filter: blur(6px);z-index:2}
+h1{font-size:22px;margin:0;letter-spacing:.2px}
+h2{margin:.2rem 0 .4rem}
+h3{margin:.2rem 0 .2rem}
+main{max-width:980px;margin:0 auto;padding:20px}
+.card{background:var(--card);border:1px solid var(--stroke);border-radius:var(--radius);padding:var(--pad);box-shadow:var(--shadow);backdrop-filter: blur(8px)}
+.row{display:flex;gap:10px;align-items:center}
+.grid{display:grid;grid-template-columns:repeat(6,1fr);gap:10px}
+.grid input,.grid select{grid-column:span 1}
+@media(max-width:880px){.grid{grid-template-columns:1fr 1fr}}
+.btn{background:linear-gradient(135deg,var(--brand),var(--brand-2));border:none;color:white;padding:12px 16px;border-radius:14px;font-weight:700;cursor:pointer;
+  transition:transform .05s ease, filter .2s ease; box-shadow:0 6px 16px rgba(56,189,248,.25)}
+.btn:hover{filter:brightness(1.05)}
+.btn:active{transform:translateY(1px)}
+.btn.ghost{background:transparent;border:1px solid #32415c;color:var(--ink)}
+.btn.success{background:linear-gradient(135deg,#22c55e,#10b981)}
+.btn.warn{background:linear-gradient(135deg,#fbbf24,#f59e0b)}
+.btn.danger{background:linear-gradient(135deg,#fb7185,#ef4444)}
+.muted{color:var(--muted)}.small{font-size:12px}.center{text-align:center}.mt{margin-top:12px}.gap{gap:12px}.space-between{justify-content:space-between}
+input,select{width:100%;padding:12px 12px;border-radius:12px;border:1px solid #32415c;background:#0b1220bb;color:var(--ink);outline:none}
+input:focus,select:focus{border-color:#3b82f6; box-shadow:0 0 0 3px #3b82f622}
+.list{list-style:none;margin:0;padding:0;display:flex;flex-direction:column;gap:8px}
+.item{display:grid;grid-template-columns:1fr auto auto auto;gap:10px;align-items:center;background:var(--card-solid);
+  border:1px solid var(--stroke);border-radius:14px;padding:12px;box-shadow:var(--shadow)}
+.item .meta{font-size:12px;color:var(--muted)}
+.item .amount{font-variant-numeric:tabular-nums;font-weight:700}
+.item.settlement{border:1px dashed #3b82f6; background:#0b1530aa}
+.badge{font-size:11px;padding:2px 8px;border-radius:999px;border:1px solid #3b82f6;color:#9ecbff}
+.summary{display:grid;grid-template-columns:repeat(3,1fr);gap:12px}
+.summary .box{background:var(--card-solid);border:1px solid var(--stroke);border-radius:14px;padding:14px;box-shadow:var(--shadow)}
+.kicker{font-size:12px;color:#9ecbff;text-transform:uppercase;letter-spacing:.12em;margin-bottom:6px}
+.divider{height:1px;background:linear-gradient(90deg,transparent,#2a3754,transparent);margin:14px 0}
+.toast{position:fixed;bottom:18px;left:50%;transform:translateX(-50%);background:#0f172a; color:var(--ink);border:1px solid #274063;
+  border-radius:12px;padding:10px 14px;box-shadow:var(--shadow);display:none;z-index:50}
+
+
+/* Balance banner */
+.balance-banner{
+  position:sticky; top:56px; z-index:3;
+  margin:12px auto 0; max-width:980px;
+  background:linear-gradient(135deg,#1e293b,#0b1220);
+  border:1px solid #2a3754; color:#e6edf3;
+  border-radius:14px; padding:10px 14px;
+  display:flex; align-items:center; justify-content:space-between;
+  box-shadow:0 8px 24px rgba(0,0,0,.25);
+}
+.balance-banner strong{letter-spacing:.2px}
+.balance-ok{color:#22c55e}
+.balance-owes{color:#93c5fd}

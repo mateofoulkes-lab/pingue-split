@@ -1,0 +1,136 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Pingüé Split — gastos a dos</title>
+  <link rel="manifest" href="manifest.json">
+  <meta name="theme-color" content="#0ea5e9">
+  <link rel="icon" href="icons/icon-192.png">
+  <link rel="apple-touch-icon" href="icons/icon-192.png">
+  <meta name="description" content="App simple para registrar gastos entre dos personas, ver quién debe a quién, y guardar todo en la nube gratis.">
+  <link rel="stylesheet" href="styles.css">
+  <script>
+    if ('serviceWorker' in navigator) {
+      window.addEventListener('load', () => { navigator.serviceWorker.register('./sw.js'); });
+    }
+  </script>
+  <!-- Firebase SDKs (compat for simpler usage) -->
+  <script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-app-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-auth-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-analytics-compat.js"></script>
+  <script src="config.js"></script>
+</head>
+<body>
+  <header>
+    <h1>Pingüé Split</h1>
+    <button id="installBtn" hidden>Instalar</button>
+  </header>
+
+  <main id="app" class="card">
+    <section id="authSection">
+      <h2>Ingresá</h2>
+      <p class="muted">Solo las dos cuentas autorizadas pueden ver/editar.</p>
+      <div class="row gap">
+        <button id="googleBtn" class="btn">Ingresar con Google</button>
+      </div>
+      <div class="divider"></div>
+      <div class="muted small">o con email/clave</div>
+      <form id="emailForm" class="row mt">
+        <input id="email" type="email" placeholder="tu@correo" required>
+        <input id="pass" type="password" placeholder="clave" required>
+        <button type="submit" class="btn">Entrar</button>
+      </form>
+    </section>
+
+    <section id="appSection" hidden>
+
+      <div id="balanceBanner" class="balance-banner" hidden>
+        <div class="muted small">Estado actual</div>
+        <div id="balanceText"><strong>Calculando…</strong></div>
+      </div>
+
+      <div class="row space-between">
+        <div>
+          <h2>Gastos del período</h2>
+          <div class="muted small">Grupo: <span id="groupName"></span></div>
+        </div>
+        <div>
+          <button id="signOutBtn" class="btn ghost">Salir</button>
+        </div>
+      </div>
+
+      <form id="expenseForm" class="grid mt">
+        <input id="expDate" type="date" required>
+        <input id="expDesc" type="text" placeholder="Descripción" required>
+        <input id="expAmt" type="number" inputmode="decimal" step="0.01" placeholder="Monto" required>
+        <select id="expPayer">
+          <option value="A">Pagó A</option>
+          <option value="B">Pagó B</option>
+        </select>
+        <input id="expCat" type="text" placeholder="Categoría (opcional)" list="catList">
+<datalist id="catList">
+  <option value="supermercado">
+  <option value="feria">
+  <option value="polleria">
+  <option value="carne">
+  <option value="internet">
+  <option value="luz">
+  <option value="gas">
+  <option value="municipales">
+  <option value="cem">
+  <option value="marina">
+</datalist>
+        <button class="btn" type="submit">Agregar</button>
+      </form>
+
+      <div class="row gap mt">
+        <label>Mes:
+          <input id="monthPicker" type="month">
+        </label>
+        <label>Filtro:
+          <select id="filterPayer">
+            <option value="ALL">Todos</option>
+            <option value="A">Pagó A</option>
+            <option value="B">Pagó B</option>
+            <option value="SETTLEMENT">Solo settlements</option>
+          </select>
+        </label>
+        <button id="exportBtn" class="btn ghost">Exportar CSV</button>
+      </div>
+
+      <section class="card mt">
+        <h3>Resumen</h3>
+        <div id="summary" class="summary"></div>
+      </section>
+
+      <section class="card mt">
+        <h3>Quedar a mano (settlement)</h3>
+        <div class="kicker">Podés hacerlo cuando quieras (no solo fin de mes).</div>
+        <form id="settleForm" class="grid">
+          <input id="setDate" type="date" required>
+          <select id="setDir">
+            <option value="A2B">A → B</option>
+            <option value="B2A">B → A</option>
+          </select>
+          <input id="setAmt" type="number" inputmode="decimal" step="0.01" placeholder="Monto" required>
+          <input id="setNote" type="text" placeholder="Nota (opcional)">
+          <button type="submit" class="btn success">Registrar pago</button>
+          <button id="settleAllBtn" class="btn warn" type="button" title="Usa el saldo actual para quedar a cero">Saldar ahora</button>
+        </form>
+        <div class="muted small mt">“Registrar pago” crea un movimiento que no afecta el gasto total, solo ajusta el saldo entre A y B.</div>
+      </section>
+
+      <section class="card mt">
+        <h3>Lista</h3>
+        <ul id="list" class="list"></ul>
+      </section>
+    </section>
+  </main>
+
+  <footer class="muted small center">Hecho con ♥ — funciona offline y sincroniza cuando hay internet.</footer>
+
+  <script src="app.js"></script>
+</body>
+</html>
