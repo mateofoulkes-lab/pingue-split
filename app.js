@@ -34,7 +34,7 @@
   const profileMenu = document.getElementById('profileMenu');
   const profileMenuPhoto = document.getElementById('profileMenuPhoto');
   const profileNameEl = document.getElementById('profileName');
-  the profileEmailEl = document.getElementById('profileEmail');
+  const profileEmailEl = document.getElementById('profileEmail');
   const signOutBtn = document.getElementById('signOutBtn');
   const addExpenseBtn = document.getElementById('addExpenseBtn');
   const openSettlementBtn = document.getElementById('openSettlementBtn');
