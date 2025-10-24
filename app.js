@@ -34,7 +34,7 @@
   const profileMenu = document.getElementById('profileMenu');
   const profileMenuPhoto = document.getElementById('profileMenuPhoto');
   const profileNameEl = document.getElementById('profileName');
-  the profileEmailEl = document.getElementById('profileEmail');
+  const profileEmailEl = document.getElementById('profileEmail');
   const signOutBtn = document.getElementById('signOutBtn');
   const addExpenseBtn = document.getElementById('addExpenseBtn');
   const openSettlementBtn = document.getElementById('openSettlementBtn');
@@ -378,8 +378,8 @@
       for (const it of items) {
         const li = document.createElement('li');
         const isSet = it.settlement === true;
-        li.className = 'item' + (isSet ? ' settlement' : '');
         if (isSet){
+          li.className = 'item settlement';
           const dir = `${NAME_MAP[it.from]} → ${NAME_MAP[it.to]}`;
           const note = it.note ? it.note : 'Ajuste de balance';
           li.innerHTML = `
@@ -397,6 +397,8 @@
             </div>
           `;
         } else {
+          const payerClass = it.payer === 'A' ? ' payer-a' : it.payer === 'B' ? ' payer-b' : '';
+          li.className = `item${payerClass}`;
           const shareA = round2(it.oweA ?? it.amount/2);
           const shareB = round2(it.oweB ?? it.amount/2);
           li.innerHTML = `
@@ -425,21 +427,21 @@
 
     const { paidA, paidB, oweA, oweB, total, balanceA, balanceB } = computeBalances();
     const summaryHtml = `
-      <div class="box">
+      <div class="box summary__total">
         <div class="kicker">Total período</div>
         <strong>${formatMoney(total)}</strong>
       </div>
-      <div class="box">
+      <div class="box summary__payer">
         <div class="kicker">Pagó ${NAME_A}</div>
         <strong>${formatMoney(paidA)}</strong>
         <div class="meta">Debe ${formatMoney(oweA)}</div>
       </div>
-      <div class="box">
+      <div class="box summary__payer">
         <div class="kicker">Pagó ${NAME_B}</div>
         <strong>${formatMoney(paidB)}</strong>
         <div class="meta">Debe ${formatMoney(oweB)}</div>
       </div>
-      <div class="box" style="grid-column: span 3">
+      <div class="box summary__balance">
         <div class="kicker">Saldo actual</div>
         <strong>${balanceA > 0 ? `${NAME_B} debe ${formatMoney(balanceA)} a ${NAME_A}` : balanceA < 0 ? `${NAME_A} debe ${formatMoney(Math.abs(balanceA))} a ${NAME_B}` : 'Están a mano'}</strong>
       </div>`;
