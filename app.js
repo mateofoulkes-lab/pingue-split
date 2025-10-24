@@ -11,6 +11,7 @@
   const NAME_B = cfg.users.B.name;
   const NAME_MAP = { A: NAME_A, B: NAME_B };
   const round2 = (n) => Math.round(Number(n || 0) * 100) / 100;
+  const clamp = (value, min, max) => Math.min(Math.max(value, min), max);
   const money = new Intl.NumberFormat('es-AR', { style: 'currency', currency: 'ARS', minimumFractionDigits: 2 });
   const formatMoney = (n) => money.format(round2(n));
   const formatDate = (ts) => ts.toDate().toLocaleDateString('es-AR', { day: 'numeric', month: 'short', year: 'numeric' });
@@ -123,6 +124,64 @@
     if (e.key === 'Escape') { closeAllModals(); hideProfileMenu(); }
   });
 
+  let lastAmountEdited = 'A';
+
+  const setAmountInput = (input, value) => {
+    const sanitized = Math.abs(value) < 0.005 ? 0 : value;
+    input.value = round2(sanitized).toFixed(2);
+  };
+
+  const updateAmountComplement = (preferred = lastAmountEdited, fallbackToEven = false) => {
+    const total = parseFloat(expAmtInput.value);
+    if (isNaN(total) || total <= 0) return;
+    const useB = preferred === 'B';
+    const primary = useB ? splitAmountB : splitAmountA;
+    const secondary = useB ? splitAmountA : splitAmountB;
+    const primaryVal = parseFloat(primary.value);
+    const secondaryVal = parseFloat(secondary.value);
+
+    if (isNaN(primaryVal)) {
+      if (fallbackToEven && isNaN(secondaryVal)) {
+        normalizeAmountFields(preferred);
+      } else if (!isNaN(secondaryVal)) {
+        setAmountInput(secondary, clamp(secondaryVal, 0, total));
+      }
+      return;
+    }
+
+    const clamped = clamp(primaryVal, 0, total);
+    const remainder = round2(total - clamped);
+    setAmountInput(secondary, remainder);
+  };
+
+  const normalizeAmountFields = (preferred = lastAmountEdited) => {
+    const total = parseFloat(expAmtInput.value);
+    if (isNaN(total) || total <= 0) return;
+
+    const useB = preferred === 'B';
+    const primary = useB ? splitAmountB : splitAmountA;
+    const secondary = useB ? splitAmountA : splitAmountB;
+
+    let primaryVal = parseFloat(primary.value);
+    let secondaryVal = parseFloat(secondary.value);
+
+    if (isNaN(primaryVal) && isNaN(secondaryVal)) {
+      const half = round2(total / 2);
+      setAmountInput(splitAmountA, half);
+      setAmountInput(splitAmountB, total - half);
+      return;
+    }
+
+    if (isNaN(primaryVal)) {
+      primaryVal = total - clamp(isNaN(secondaryVal) ? 0 : secondaryVal, 0, total);
+    }
+
+    primaryVal = clamp(primaryVal, 0, total);
+    const remainder = round2(total - primaryVal);
+    setAmountInput(primary, primaryVal);
+    setAmountInput(secondary, remainder);
+  };
+
   function resetExpenseForm(){
     expenseForm.reset();
     splitTypeSelect.value = 'even';
@@ -130,6 +189,7 @@
     splitPercentB.value = '50';
     splitAmountA.value = '';
     splitAmountB.value = '';
+    lastAmountEdited = 'A';
     updateSplitVisibility();
     expDateInput.value = new Date().toISOString().slice(0,10);
   }
@@ -154,7 +214,12 @@
     percentFields.classList.toggle('hidden', type !== 'percent');
     amountFields.classList.toggle('hidden', type !== 'amount');
   }
-  splitTypeSelect.addEventListener('change', updateSplitVisibility);
+  splitTypeSelect.addEventListener('change', () => {
+    updateSplitVisibility();
+    if (splitTypeSelect.value === 'amount') {
+      normalizeAmountFields();
+    }
+  });
   splitPercentA.addEventListener('input', () => {
     const val = parseFloat(splitPercentA.value);
     if (!isNaN(val)) splitPercentB.value = Math.max(0, round2(100 - val));
@@ -162,6 +227,19 @@
   splitPercentB.addEventListener('input', () => {
     const val = parseFloat(splitPercentB.value);
     if (!isNaN(val)) splitPercentA.value = Math.max(0, round2(100 - val));
+  });
+  splitAmountA.addEventListener('input', () => {
+    lastAmountEdited = 'A';
+    updateAmountComplement('A');
+  });
+  splitAmountB.addEventListener('input', () => {
+    lastAmountEdited = 'B';
+    updateAmountComplement('B');
+  });
+  expAmtInput.addEventListener('input', () => {
+    if (splitTypeSelect.value === 'amount') {
+      updateAmountComplement(undefined, true);
+    }
   });
 
   googleBtn.addEventListener('click', () => {
@@ -276,9 +354,13 @@
       return { oweA, oweB };
     }
     if (type === 'amount') {
+      normalizeAmountFields();
+      const total = round2(amount);
       const aA = parseFloat(splitAmountA.value);
       const aB = parseFloat(splitAmountB.value);
-      if (isNaN(aA) || isNaN(aB) || Math.abs((aA + aB) - amount) > 0.02) { throw new Error('Los montos deben sumar el total.'); }
+      if (isNaN(aA) || isNaN(aB)) { throw new Error('Completá los montos.'); }
+      const sum = round2(aA + aB);
+      if (Math.abs(sum - total) > 0.02) { throw new Error('Los montos deben sumar el total.'); }
       return { oweA: round2(aA), oweB: round2(aB) };
     }
     const half = round2(amount/2);
