@@ -34,7 +34,7 @@
   const profileMenu = document.getElementById('profileMenu');
   const profileMenuPhoto = document.getElementById('profileMenuPhoto');
   const profileNameEl = document.getElementById('profileName');
-  const profileEmailEl = document.getElementById('profileEmail');
+  the profileEmailEl = document.getElementById('profileEmail');
   const signOutBtn = document.getElementById('signOutBtn');
   const addExpenseBtn = document.getElementById('addExpenseBtn');
   const openSettlementBtn = document.getElementById('openSettlementBtn');
@@ -365,7 +365,14 @@
     if (!items.length){
       const empty = document.createElement('li');
       empty.className = 'item';
-      empty.innerHTML = `<div class="item__info"><strong>Sin movimientos</strong><div class="meta">Agregá un gasto con el botón “+”.</div></div>`;
+      empty.innerHTML = `
+        <div class="item__row item__row--top">
+          <div class="item__title"><strong>Sin movimientos</strong></div>
+        </div>
+        <div class="item__row item__row--middle">
+          <span class="meta">Agregá un gasto con el botón “+”.</span>
+        </div>
+      `;
       listEl.appendChild(empty);
     } else {
       for (const it of items) {
@@ -374,14 +381,18 @@
         li.className = 'item' + (isSet ? ' settlement' : '');
         if (isSet){
           const dir = `${NAME_MAP[it.from]} → ${NAME_MAP[it.to]}`;
+          const note = it.note ? it.note : 'Ajuste de balance';
           li.innerHTML = `
-            <div class="item__info">
+            <div class="item__row item__row--top">
               <div class="item__title"><strong>Pago ${dir}</strong><span class="tag">Settlement</span></div>
-              <div class="meta">${it.note ? it.note + ' • ' : ''}${formatDate(it.date)}</div>
+              <div class="item__amount">${formatMoney(it.amount)}</div>
             </div>
-            <div class="item__actions">
-              <div class="amount">${formatMoney(it.amount)}</div>
-              <div class="meta">Registrado por ${NAME_MAP[it.from]}</div>
+            <div class="item__row item__row--middle">
+              <span class="meta">${formatDate(it.date)}</span>
+              <span class="meta">${note}</span>
+            </div>
+            <div class="item__row item__row--bottom">
+              <span class="meta">Registrado por ${NAME_MAP[it.from]}</span>
               <button class="btn ghost small" data-id="${it.id}">Eliminar</button>
             </div>
           `;
@@ -389,17 +400,19 @@
           const shareA = round2(it.oweA ?? it.amount/2);
           const shareB = round2(it.oweB ?? it.amount/2);
           li.innerHTML = `
-            <div class="item__info">
+            <div class="item__row item__row--top">
               <div class="item__title">
                 <strong>${it.desc}</strong>
                 ${it.cat ? `<span class="tag">${it.cat}</span>` : ''}
               </div>
-              <div class="meta">${formatDate(it.date)}</div>
-              <div class="shares">${NAME_A}: ${formatMoney(shareA)} · ${NAME_B}: ${formatMoney(shareB)}</div>
+              <div class="item__amount">${formatMoney(it.amount)}</div>
             </div>
-            <div class="item__actions">
-              <div class="amount">${formatMoney(it.amount)}</div>
-              <div class="meta">Pagó ${NAME_MAP[it.payer] || it.payer}</div>
+            <div class="item__row item__row--middle">
+              <span class="meta">${formatDate(it.date)}</span>
+              <span class="meta">Pagó ${NAME_MAP[it.payer] || it.payer}</span>
+            </div>
+            <div class="item__row item__row--bottom">
+              <span class="shares">${NAME_A}: ${formatMoney(shareA)} · ${NAME_B}: ${formatMoney(shareB)}</span>
               <button class="btn ghost small" data-id="${it.id}">Eliminar</button>
             </div>
           `;
