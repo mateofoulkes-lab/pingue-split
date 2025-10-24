@@ -2,12 +2,12 @@
 // Instrucciones en README.md
 window.PINGUE_SPLIT_CONFIG = {
   firebaseConfig: {
-    apiKey: "TU_API_KEY",
-    authDomain: "TU_PROYECTO.firebaseapp.com",
-    projectId: "TU_PROYECTO",
-    storageBucket: "TU_PROYECTO.appspot.com",
-    messagingSenderId: "000000000000",
-    appId: "1:000000000000:web:xxxxxxxxxxxxxxxxxxxxxx"
+  apiKey: "AIzaSyAuOadZ5DaVZFkKnKiufvX0dmJUL5kMDTg",
+  authDomain: "pingue-split.firebaseapp.com",
+  projectId: "pingue-split",
+  storageBucket: "pingue-split.firebasestorage.app",
+  messagingSenderId: "507240653837",
+  appId: "1:507240653837:web:09d1f3b29cc1d2ef99a144"
   },
   groupId: "gastos-compartidos",
   users: {
