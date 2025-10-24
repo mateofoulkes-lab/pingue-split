@@ -71,17 +71,19 @@
         </div>
 
         <div class="filters row gap wrap mt">
-          <label class="filter-chip">Mes
-            <input id="monthPicker" type="month">
-          </label>
-          <label class="filter-chip">Filtro
-            <select id="filterPayer">
-              <option value="ALL">Todos</option>
-              <option value="A" id="filterPayerA">Pagó A</option>
-              <option value="B" id="filterPayerB">Pagó B</option>
-              <option value="SETTLEMENT">Solo settlements</option>
-            </select>
-          </label>
+          <div class="filters-group">
+            <label class="filter-chip">Mes
+              <input id="monthPicker" type="month">
+            </label>
+            <label class="filter-chip">Filtro
+              <select id="filterPayer">
+                <option value="ALL">Todos</option>
+                <option value="A" id="filterPayerA">Pagó A</option>
+                <option value="B" id="filterPayerB">Pagó B</option>
+                <option value="SETTLEMENT">Solo settlements</option>
+              </select>
+            </label>
+          </div>
           <button id="exportBtn" class="btn ghost">Exportar CSV</button>
         </div>
 
