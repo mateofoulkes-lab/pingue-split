@@ -11,6 +11,7 @@
   const NAME_B = cfg.users.B.name;
   const NAME_MAP = { A: NAME_A, B: NAME_B };
   const round2 = (n) => Math.round(Number(n || 0) * 100) / 100;
+  const clamp = (value, min, max) => Math.min(Math.max(value, min), max);
   const money = new Intl.NumberFormat('es-AR', { style: 'currency', currency: 'ARS', minimumFractionDigits: 2 });
   const formatMoney = (n) => money.format(round2(n));
   const formatDate = (ts) => ts.toDate().toLocaleDateString('es-AR', { day: 'numeric', month: 'short', year: 'numeric' });
@@ -34,7 +35,7 @@
   const profileMenu = document.getElementById('profileMenu');
   const profileMenuPhoto = document.getElementById('profileMenuPhoto');
   const profileNameEl = document.getElementById('profileName');
-  the profileEmailEl = document.getElementById('profileEmail');
+  const profileEmailEl = document.getElementById('profileEmail');
   const signOutBtn = document.getElementById('signOutBtn');
   const addExpenseBtn = document.getElementById('addExpenseBtn');
   const openSettlementBtn = document.getElementById('openSettlementBtn');
@@ -72,7 +73,6 @@
   const setDir = document.getElementById('setDir');
   const setAmt = document.getElementById('setAmt');
   const setNote = document.getElementById('setNote');
-  const settleAllBtn = document.getElementById('settleAllBtn');
 
   groupName.textContent = cfg.groupId;
 
@@ -91,8 +91,10 @@
     percentLabelB.textContent = `${NAME_B} (%)`;
     amountLabelA.textContent = `${NAME_A} ($)`;
     amountLabelB.textContent = `${NAME_B} ($)`;
-    setDir.options[0].textContent = `${NAME_A} → ${NAME_B}`;
-    setDir.options[1].textContent = `${NAME_B} → ${NAME_A}`;
+    setDir.innerHTML = `
+      <option value="A2B">${NAME_A} → ${NAME_B}</option>
+      <option value="B2A">${NAME_B} → ${NAME_A}</option>
+    `;
   }
   applyDynamicLabels();
 
@@ -122,6 +124,64 @@
     if (e.key === 'Escape') { closeAllModals(); hideProfileMenu(); }
   });
 
+  let lastAmountEdited = 'A';
+
+  const setAmountInput = (input, value) => {
+    const sanitized = Math.abs(value) < 0.005 ? 0 : value;
+    input.value = round2(sanitized).toFixed(2);
+  };
+
+  const updateAmountComplement = (preferred = lastAmountEdited, fallbackToEven = false) => {
+    const total = parseFloat(expAmtInput.value);
+    if (isNaN(total) || total <= 0) return;
+    const useB = preferred === 'B';
+    const primary = useB ? splitAmountB : splitAmountA;
+    const secondary = useB ? splitAmountA : splitAmountB;
+    const primaryVal = parseFloat(primary.value);
+    const secondaryVal = parseFloat(secondary.value);
+
+    if (isNaN(primaryVal)) {
+      if (fallbackToEven && isNaN(secondaryVal)) {
+        normalizeAmountFields(preferred);
+      } else if (!isNaN(secondaryVal)) {
+        setAmountInput(secondary, clamp(secondaryVal, 0, total));
+      }
+      return;
+    }
+
+    const clamped = clamp(primaryVal, 0, total);
+    const remainder = round2(total - clamped);
+    setAmountInput(secondary, remainder);
+  };
+
+  const normalizeAmountFields = (preferred = lastAmountEdited) => {
+    const total = parseFloat(expAmtInput.value);
+    if (isNaN(total) || total <= 0) return;
+
+    const useB = preferred === 'B';
+    const primary = useB ? splitAmountB : splitAmountA;
+    const secondary = useB ? splitAmountA : splitAmountB;
+
+    let primaryVal = parseFloat(primary.value);
+    let secondaryVal = parseFloat(secondary.value);
+
+    if (isNaN(primaryVal) && isNaN(secondaryVal)) {
+      const half = round2(total / 2);
+      setAmountInput(splitAmountA, half);
+      setAmountInput(splitAmountB, total - half);
+      return;
+    }
+
+    if (isNaN(primaryVal)) {
+      primaryVal = total - clamp(isNaN(secondaryVal) ? 0 : secondaryVal, 0, total);
+    }
+
+    primaryVal = clamp(primaryVal, 0, total);
+    const remainder = round2(total - primaryVal);
+    setAmountInput(primary, primaryVal);
+    setAmountInput(secondary, remainder);
+  };
+
   function resetExpenseForm(){
     expenseForm.reset();
     splitTypeSelect.value = 'even';
@@ -129,12 +189,24 @@
     splitPercentB.value = '50';
     splitAmountA.value = '';
     splitAmountB.value = '';
+    lastAmountEdited = 'A';
     updateSplitVisibility();
     expDateInput.value = new Date().toISOString().slice(0,10);
   }
   function resetSettlementForm(){
     settleForm.reset();
-    setDate.value = new Date().toISOString().slice(0,10);
+    const today = new Date().toISOString().slice(0,10);
+    setDate.value = today;
+    const { balanceA } = computeBalances();
+    const debt = Math.abs(balanceA);
+    if (debt > 0.01) {
+      const dir = balanceA > 0 ? 'B2A' : 'A2B';
+      setDir.value = dir;
+      setAmt.value = round2(debt).toFixed(2);
+    } else {
+      setDir.value = 'A2B';
+      setAmt.value = '';
+    }
   }
 
   function updateSplitVisibility(){
@@ -142,7 +214,12 @@
     percentFields.classList.toggle('hidden', type !== 'percent');
     amountFields.classList.toggle('hidden', type !== 'amount');
   }
-  splitTypeSelect.addEventListener('change', updateSplitVisibility);
+  splitTypeSelect.addEventListener('change', () => {
+    updateSplitVisibility();
+    if (splitTypeSelect.value === 'amount') {
+      normalizeAmountFields();
+    }
+  });
   splitPercentA.addEventListener('input', () => {
     const val = parseFloat(splitPercentA.value);
     if (!isNaN(val)) splitPercentB.value = Math.max(0, round2(100 - val));
@@ -150,6 +227,19 @@
   splitPercentB.addEventListener('input', () => {
     const val = parseFloat(splitPercentB.value);
     if (!isNaN(val)) splitPercentA.value = Math.max(0, round2(100 - val));
+  });
+  splitAmountA.addEventListener('input', () => {
+    lastAmountEdited = 'A';
+    updateAmountComplement('A');
+  });
+  splitAmountB.addEventListener('input', () => {
+    lastAmountEdited = 'B';
+    updateAmountComplement('B');
+  });
+  expAmtInput.addEventListener('input', () => {
+    if (splitTypeSelect.value === 'amount') {
+      updateAmountComplement(undefined, true);
+    }
   });
 
   googleBtn.addEventListener('click', () => {
@@ -264,9 +354,13 @@
       return { oweA, oweB };
     }
     if (type === 'amount') {
+      normalizeAmountFields();
+      const total = round2(amount);
       const aA = parseFloat(splitAmountA.value);
       const aB = parseFloat(splitAmountB.value);
-      if (isNaN(aA) || isNaN(aB) || Math.abs((aA + aB) - amount) > 0.02) { throw new Error('Los montos deben sumar el total.'); }
+      if (isNaN(aA) || isNaN(aB)) { throw new Error('Completá los montos.'); }
+      const sum = round2(aA + aB);
+      if (Math.abs(sum - total) > 0.02) { throw new Error('Los montos deben sumar el total.'); }
       return { oweA: round2(aA), oweB: round2(aB) };
     }
     const half = round2(amount/2);
@@ -348,7 +442,7 @@
     }, { paidA:0, paidB:0, oweA:0, oweB:0, total:0 });
     const sA2B = settlements.filter(x=>x.from==='A'&&x.to==='B').reduce((a,b)=>a+round2(b.amount),0);
     const sB2A = settlements.filter(x=>x.from==='B'&&x.to==='A').reduce((a,b)=>a+round2(b.amount),0);
-    const balanceA = round2(totals.paidA - totals.oweA - sA2B + sB2A);
+    const balanceA = round2(totals.paidA - totals.oweA + sA2B - sB2A);
     const balanceB = round2(-(balanceA));
     return { ...totals, balanceA, balanceB };
   }
@@ -378,8 +472,8 @@
       for (const it of items) {
         const li = document.createElement('li');
         const isSet = it.settlement === true;
-        li.className = 'item' + (isSet ? ' settlement' : '');
         if (isSet){
+          li.className = 'item settlement';
           const dir = `${NAME_MAP[it.from]} → ${NAME_MAP[it.to]}`;
           const note = it.note ? it.note : 'Ajuste de balance';
           li.innerHTML = `
@@ -397,6 +491,8 @@
             </div>
           `;
         } else {
+          const payerClass = it.payer === 'A' ? ' payer-a' : it.payer === 'B' ? ' payer-b' : '';
+          li.className = `item${payerClass}`;
           const shareA = round2(it.oweA ?? it.amount/2);
           const shareB = round2(it.oweB ?? it.amount/2);
           li.innerHTML = `
@@ -425,21 +521,21 @@
 
     const { paidA, paidB, oweA, oweB, total, balanceA, balanceB } = computeBalances();
     const summaryHtml = `
-      <div class="box">
+      <div class="box summary__total">
         <div class="kicker">Total período</div>
         <strong>${formatMoney(total)}</strong>
       </div>
-      <div class="box">
+      <div class="box summary__payer">
         <div class="kicker">Pagó ${NAME_A}</div>
         <strong>${formatMoney(paidA)}</strong>
         <div class="meta">Debe ${formatMoney(oweA)}</div>
       </div>
-      <div class="box">
+      <div class="box summary__payer">
         <div class="kicker">Pagó ${NAME_B}</div>
         <strong>${formatMoney(paidB)}</strong>
         <div class="meta">Debe ${formatMoney(oweB)}</div>
       </div>
-      <div class="box" style="grid-column: span 3">
+      <div class="box summary__balance">
         <div class="kicker">Saldo actual</div>
         <strong>${balanceA > 0 ? `${NAME_B} debe ${formatMoney(balanceA)} a ${NAME_A}` : balanceA < 0 ? `${NAME_A} debe ${formatMoney(Math.abs(balanceA))} a ${NAME_B}` : 'Están a mano'}</strong>
       </div>`;
@@ -484,14 +580,4 @@
     }catch(e2){ toast(e2.message); }
   });
 
-  settleAllBtn.addEventListener('click', () => {
-    const netA = computeBalances().balanceA;
-    if (Math.abs(netA) < 0.01) { toast('Ya están a mano'); return; }
-    const dir = netA > 0 ? 'B2A' : 'A2B';
-    const amt = Math.abs(netA);
-    setDir.value = dir;
-    setAmt.value = round2(amt).toFixed(2);
-    setDate.value = new Date().toISOString().slice(0,10);
-    toast('Completé el monto para saldar ahora. Confirmá con "Registrar pago".');
-  });
 })();
