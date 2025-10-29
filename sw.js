@@ -1,4 +1,4 @@
-const CACHE = "pg-split-v2";
+const CACHE = "pg-split-v3";
 const ASSETS = [
   "./",
   "./index.html",
