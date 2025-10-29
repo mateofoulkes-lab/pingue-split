@@ -15,6 +15,15 @@
   const money = new Intl.NumberFormat('es-AR', { style: 'currency', currency: 'ARS', minimumFractionDigits: 2 });
   const formatMoney = (n) => money.format(round2(n));
   const formatDate = (ts) => ts.toDate().toLocaleDateString('es-AR', { day: 'numeric', month: 'short', year: 'numeric' });
+  const parseLocalDate = (value) => {
+    if (!value) return new Date();
+    const [yearStr, monthStr, dayStr] = value.split('-');
+    const year = Number(yearStr);
+    const month = Number(monthStr);
+    const day = Number(dayStr);
+    if (!year || !month || !day) { return new Date(value); }
+    return new Date(year, month - 1, day);
+  };
 
   let deferredPrompt;
   const installBtn = document.getElementById('installBtn');
@@ -197,7 +206,7 @@
     settleForm.reset();
     const today = new Date().toISOString().slice(0,10);
     setDate.value = today;
-    const { balanceA } = computeBalances();
+    const { balanceA } = computeBalances(allExpenses, allSettlements);
     const debt = Math.abs(balanceA);
     if (debt > 0.01) {
       const dir = balanceA > 0 ? 'B2A' : 'A2B';
@@ -287,9 +296,12 @@
   });
 
   let unsubscribe = null;
+  let unsubscribeAll = null;
   let currentUser = null;
   let expenses = [];
   let settlements = [];
+  let allExpenses = [];
+  let allSettlements = [];
 
   const now = new Date();
   const ym = now.toISOString().slice(0,7);
@@ -308,10 +320,12 @@
       profilePhoto.src = photo; profileMenuPhoto.src = photo;
       profileNameEl.textContent = user.displayName || user.email || 'Cuenta';
       profileEmailEl.textContent = user.email || '';
+      subscribeAll();
       subscribe();
     } else {
       appSection.hidden = true; authSection.hidden = false; hideProfileMenu(); closeAllModals();
       if (unsubscribe) { unsubscribe(); unsubscribe = null; }
+      if (unsubscribeAll) { unsubscribeAll(); unsubscribeAll = null; }
     }
   });
 
@@ -320,6 +334,19 @@
     const start = new Date(y, m-1, 1);
     const end = new Date(y, m, 1);
     return { start, end };
+  }
+
+  function subscribeAll() {
+    if (unsubscribeAll) { unsubscribeAll(); }
+    const ref = db.collection('groups').doc(cfg.groupId).collection('expenses')
+      .orderBy('date','desc');
+
+    unsubscribeAll = ref.onSnapshot(snap => {
+      const all = snap.docs.map(d => ({ id:d.id, ...d.data() }));
+      allExpenses = all.filter(x => !x.settlement);
+      allSettlements = all.filter(x => x.settlement === true);
+      updateBalanceBanner(computeBalances(allExpenses, allSettlements).balanceA);
+    }, (err) => console.error(err));
   }
 
   function subscribe() {
@@ -380,7 +407,7 @@
     try { split = computeSplitValues(amt); }
     catch(err){ toast(err.message); return; }
     const doc = {
-      date: firebase.firestore.Timestamp.fromDate(new Date(date)),
+      date: firebase.firestore.Timestamp.fromDate(parseLocalDate(date)),
       desc,
       amount: round2(amt),
       payer,
@@ -430,8 +457,8 @@
     return items.filter(x => x.settlement ? (fp==='A' ? x.from==='A' : x.from==='B') : x.payer===fp);
   }
 
-  function computeBalances(){
-    const totals = expenses.reduce((acc,it)=>{
+  function computeBalances(expList = expenses, setList = settlements){
+    const totals = expList.reduce((acc,it)=>{
       const oweA = round2(it.oweA ?? it.amount/2);
       const oweB = round2(it.oweB ?? it.amount/2);
       acc.total += round2(it.amount);
@@ -440,8 +467,8 @@
       acc.oweB += oweB;
       return acc;
     }, { paidA:0, paidB:0, oweA:0, oweB:0, total:0 });
-    const sA2B = settlements.filter(x=>x.from==='A'&&x.to==='B').reduce((a,b)=>a+round2(b.amount),0);
-    const sB2A = settlements.filter(x=>x.from==='B'&&x.to==='A').reduce((a,b)=>a+round2(b.amount),0);
+    const sA2B = setList.filter(x=>x.from==='A'&&x.to==='B').reduce((a,b)=>a+round2(b.amount),0);
+    const sB2A = setList.filter(x=>x.from==='B'&&x.to==='A').reduce((a,b)=>a+round2(b.amount),0);
     const balanceA = round2(totals.paidA - totals.oweA + sA2B - sB2A);
     const balanceB = round2(-(balanceA));
     return { ...totals, balanceA, balanceB };
@@ -520,6 +547,7 @@
     }
 
     const { paidA, paidB, oweA, oweB, total, balanceA, balanceB } = computeBalances();
+    const { balanceA: overallBalanceA } = computeBalances(allExpenses, allSettlements);
     const summaryHtml = `
       <div class="box summary__total">
         <div class="kicker">Total período</div>
@@ -541,12 +569,16 @@
       </div>`;
     summaryEl.innerHTML = summaryHtml;
 
+    updateBalanceBanner(overallBalanceA);
+  }
+
+  function updateBalanceBanner(balanceAValue){
     let statusText = `😊 ${NAME_A} y ${NAME_B} están a mano`;
     balanceBanner.classList.remove('ok');
-    if (balanceA > 0.01) {
-      statusText = `${NAME_B} debe ${formatMoney(balanceA)} a ${NAME_A}`;
-    } else if (balanceA < -0.01) {
-      statusText = `${NAME_A} debe ${formatMoney(Math.abs(balanceA))} a ${NAME_B}`;
+    if (balanceAValue > 0.01) {
+      statusText = `${NAME_B} debe ${formatMoney(balanceAValue)} a ${NAME_A}`;
+    } else if (balanceAValue < -0.01) {
+      statusText = `${NAME_A} debe ${formatMoney(Math.abs(balanceAValue))} a ${NAME_B}`;
     } else {
       balanceBanner.classList.add('ok');
     }
@@ -560,7 +592,7 @@
     const dir = setDir.value;
     const amt = parseFloat(setAmt.value);
     if (isNaN(amt) || amt<=0) { toast('Ingresá un monto válido.'); return; }
-    const when = new Date(setDate.value);
+    const when = parseLocalDate(setDate.value);
     const from = dir === 'A2B' ? 'A' : 'B';
     const to = dir === 'A2B' ? 'B' : 'A';
     const doc = {
