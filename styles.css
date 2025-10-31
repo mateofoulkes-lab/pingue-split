@@ -34,6 +34,10 @@ main{max-width:1020px;margin:0 auto;padding:28px 22px 180px}
 .btn.small.btn.ghost{border:1px solid rgba(148,163,184,.3)}
 .btn.icon-only{padding:8px;min-width:36px;width:36px;height:36px;display:flex;align-items:center;justify-content:center}
 .btn.icon-only span{pointer-events:none}
+.btn .icon{display:inline-flex;align-items:center;justify-content:center;margin-right:6px;font-size:14px;line-height:1}
+.btn.small .icon{font-size:13px}
+.btn.icon-only .icon{margin-right:0}
+.btn .label{display:inline-block}
 .muted{color:var(--muted)}.small{font-size:12px}.center{text-align:center}.mt{margin-top:18px}.gap{gap:12px}.space-between{justify-content:space-between}
 .hidden{display:none !important}
 body.modal-open{overflow:hidden}
