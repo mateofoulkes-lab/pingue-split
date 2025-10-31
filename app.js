@@ -51,9 +51,11 @@
   const expenseModal = document.getElementById('expenseModal');
   const settlementModal = document.getElementById('settlementModal');
   const expenseForm = document.getElementById('expenseForm');
+  const expenseTitle = document.getElementById('expenseTitle');
   const expDateInput = document.getElementById('expDate');
   const expDescInput = document.getElementById('expDesc');
   const expAmtInput = document.getElementById('expAmt');
+  const expPendingInput = document.getElementById('expPending');
   const expPayerSelect = document.getElementById('expPayer');
   const expCatInput = document.getElementById('expCat');
   const splitTypeSelect = document.getElementById('splitType');
@@ -67,6 +69,7 @@
   const percentLabelB = document.getElementById('percentLabelB');
   const amountLabelA = document.getElementById('amountLabelA');
   const amountLabelB = document.getElementById('amountLabelB');
+  const expenseSubmitBtn = expenseForm.querySelector('button[type="submit"]');
   const listEl = document.getElementById('list');
   const summaryEl = document.getElementById('summary');
   const monthPicker = document.getElementById('monthPicker');
@@ -116,6 +119,11 @@
     if (![...document.querySelectorAll('.modal')].some(m => !m.classList.contains('hidden'))){
       document.body.classList.remove('modal-open');
     }
+    if (modal === expenseModal) {
+      resetExpenseForm();
+    } else if (modal === settlementModal) {
+      resetSettlementForm();
+    }
   }
   function closeAllModals(){ document.querySelectorAll('.modal').forEach(closeModal); }
 
@@ -134,6 +142,10 @@
   });
 
   let lastAmountEdited = 'A';
+  let editingExpenseId = null;
+  let pendingAmountSnapshot = '';
+  const DEFAULT_EXPENSE_TITLE = 'Nuevo gasto';
+  const DEFAULT_EXPENSE_SUBMIT = 'Guardar gasto';
 
   const setAmountInput = (input, value) => {
     const sanitized = Math.abs(value) < 0.005 ? 0 : value;
@@ -191,16 +203,120 @@
     setAmountInput(secondary, remainder);
   };
 
+  function setPendingMode(isPending){
+    if (isPending) {
+      pendingAmountSnapshot = expAmtInput.value;
+      expAmtInput.value = '';
+    } else if (!expAmtInput.value && pendingAmountSnapshot) {
+      expAmtInput.value = pendingAmountSnapshot;
+    }
+    expPendingInput.checked = isPending;
+    expAmtInput.disabled = isPending;
+    expAmtInput.required = !isPending;
+  }
+
   function resetExpenseForm(){
     expenseForm.reset();
+    editingExpenseId = null;
     splitTypeSelect.value = 'even';
     splitPercentA.value = '50';
     splitPercentB.value = '50';
     splitAmountA.value = '';
     splitAmountB.value = '';
     lastAmountEdited = 'A';
+    pendingAmountSnapshot = '';
+    setPendingMode(false);
     updateSplitVisibility();
     expDateInput.value = new Date().toISOString().slice(0,10);
+    expenseTitle.textContent = DEFAULT_EXPENSE_TITLE;
+    expenseSubmitBtn.textContent = DEFAULT_EXPENSE_SUBMIT;
+  }
+  function captureSplitMeta(){
+    const toNumber = (input) => {
+      const val = parseFloat(input.value);
+      return Number.isFinite(val) ? round2(val) : null;
+    };
+    return {
+      type: splitTypeSelect.value,
+      percentA: toNumber(splitPercentA),
+      percentB: toNumber(splitPercentB),
+      amountA: toNumber(splitAmountA),
+      amountB: toNumber(splitAmountB)
+    };
+  }
+  function inferSplitType(expense){
+    if (expense.splitType) return expense.splitType;
+    const amountVal = Number(expense.amount);
+    const oweAVal = Number(expense.oweA);
+    const oweBVal = Number(expense.oweB);
+    const amount = Number.isFinite(amountVal) ? amountVal : null;
+    const oweA = Number.isFinite(oweAVal) ? oweAVal : null;
+    const oweB = Number.isFinite(oweBVal) ? oweBVal : null;
+    if (amount && oweA != null && oweB != null) {
+      if (Math.abs(oweA - oweB) < 0.01) return 'even';
+      return 'amount';
+    }
+    return 'even';
+  }
+  function applySplitMetaToForm(expense){
+    const type = inferSplitType(expense);
+    splitTypeSelect.value = type;
+    updateSplitVisibility();
+    if (type === 'percent') {
+      const baseAmountRaw = Number(expense.amount);
+      const baseAmount = Number.isFinite(baseAmountRaw) ? baseAmountRaw : null;
+      const percentA = expense.splitPercentA ?? (baseAmount ? round2(((expense.oweA ?? 0) / baseAmount) * 100) : null);
+      const percentB = expense.splitPercentB ?? (percentA != null ? round2(100 - percentA) : null);
+      splitPercentA.value = percentA != null ? percentA : '50';
+      splitPercentB.value = percentB != null ? percentB : '50';
+      splitAmountA.value = '';
+      splitAmountB.value = '';
+    } else if (type === 'amount') {
+      const amountA = expense.splitAmountA ?? expense.oweA;
+      const amountB = expense.splitAmountB ?? expense.oweB;
+      splitAmountA.value = amountA != null ? round2(amountA).toFixed(2) : '';
+      splitAmountB.value = amountB != null ? round2(amountB).toFixed(2) : '';
+      splitPercentA.value = '';
+      splitPercentB.value = '';
+      lastAmountEdited = 'A';
+      updateAmountComplement();
+    } else {
+      splitPercentA.value = '50';
+      splitPercentB.value = '50';
+      splitAmountA.value = '';
+      splitAmountB.value = '';
+    }
+  }
+  function formatInputDate(ts){
+    if (!ts) return new Date().toISOString().slice(0,10);
+    let date;
+    if (ts instanceof Date) { date = ts; }
+    else if (typeof ts?.toDate === 'function') { date = ts.toDate(); }
+    else { date = new Date(ts); }
+    if (!(date instanceof Date) || Number.isNaN(date.getTime())) {
+      return new Date().toISOString().slice(0,10);
+    }
+    return date.toISOString().slice(0,10);
+  }
+  function startEditExpense(expense){
+    resetExpenseForm();
+    editingExpenseId = expense.id;
+    expenseTitle.textContent = 'Editar gasto';
+    expenseSubmitBtn.textContent = 'Guardar cambios';
+    expDateInput.value = formatInputDate(expense.date);
+    expDescInput.value = expense.desc || '';
+    expPayerSelect.value = expense.payer || 'A';
+    expCatInput.value = expense.cat || '';
+    const numericAmount = Number(expense.amount);
+    if (Number.isFinite(numericAmount) && expense.amountPending !== true) {
+      expAmtInput.value = round2(numericAmount).toFixed(2);
+    } else {
+      expAmtInput.value = '';
+    }
+    setPendingMode(expense.amountPending === true);
+    applySplitMetaToForm(expense);
+    openModal(expenseModal);
+    setTimeout(() => expDescInput.focus(), 50);
   }
   function resetSettlementForm(){
     settleForm.reset();
@@ -249,6 +365,9 @@
     if (splitTypeSelect.value === 'amount') {
       updateAmountComplement(undefined, true);
     }
+  });
+  expPendingInput.addEventListener('change', () => {
+    setPendingMode(expPendingInput.checked);
   });
 
   googleBtn.addEventListener('click', () => {
@@ -378,7 +497,7 @@
       if (isNaN(pA) || isNaN(pB) || Math.abs(pA + pB - 100) > 0.01) { throw new Error('Los porcentajes deben sumar 100%.'); }
       const oweA = round2(amount * (pA/100));
       const oweB = round2(amount - oweA);
-      return { oweA, oweB };
+      return { oweA, oweB, meta: { type, percentA: round2(pA), percentB: round2(pB), amountA: null, amountB: null } };
     }
     if (type === 'amount') {
       normalizeAmountFields();
@@ -388,10 +507,13 @@
       if (isNaN(aA) || isNaN(aB)) { throw new Error('Completá los montos.'); }
       const sum = round2(aA + aB);
       if (Math.abs(sum - total) > 0.02) { throw new Error('Los montos deben sumar el total.'); }
-      return { oweA: round2(aA), oweB: round2(aB) };
+      const oweA = round2(aA);
+      const oweB = round2(aB);
+      return { oweA, oweB, meta: { type, percentA: null, percentB: null, amountA: oweA, amountB: oweB } };
     }
     const half = round2(amount/2);
-    return { oweA: half, oweB: round2(amount - half) };
+    const remainder = round2(amount - half);
+    return { oweA: half, oweB: remainder, meta: { type: 'even', percentA: 50, percentB: 50, amountA: null, amountB: null } };
   }
 
   expenseForm.addEventListener('submit', async (e) => {
@@ -399,29 +521,54 @@
     if (!currentUser) return;
     const date = expDateInput.value;
     const desc = expDescInput.value.trim();
-    const amt = parseFloat(expAmtInput.value);
     const payer = expPayerSelect.value;
     const cat = expCatInput.value.trim();
-    if (!date || !desc || isNaN(amt) || amt <= 0) { toast('Completá los datos del gasto.'); return; }
+    const pending = expPendingInput.checked;
+    const amt = pending ? null : parseFloat(expAmtInput.value);
+    if (!date || !desc || (!pending && (isNaN(amt) || amt <= 0))) { toast('Completá los datos del gasto.'); return; }
     let split;
-    try { split = computeSplitValues(amt); }
-    catch(err){ toast(err.message); return; }
-    const doc = {
+    let splitMeta;
+    if (!pending) {
+      try {
+        split = computeSplitValues(amt);
+        splitMeta = split.meta;
+      } catch(err){ toast(err.message); return; }
+    } else {
+      splitMeta = captureSplitMeta();
+    }
+    const baseDoc = {
       date: firebase.firestore.Timestamp.fromDate(parseLocalDate(date)),
       desc,
-      amount: round2(amt),
       payer,
-      oweA: split.oweA,
-      oweB: split.oweB,
       cat: cat || null,
-      createdBy: currentUser.uid,
-      createdAt: firebase.firestore.FieldValue.serverTimestamp()
+      amountPending: pending,
+      amount: pending ? null : round2(amt),
+      oweA: pending ? null : split.oweA,
+      oweB: pending ? null : split.oweB,
+      splitType: splitMeta.type,
+      splitPercentA: splitMeta.percentA,
+      splitPercentB: splitMeta.percentB,
+      splitAmountA: splitMeta.amountA,
+      splitAmountB: splitMeta.amountB
     };
     try {
-      await db.collection('groups').doc(cfg.groupId).collection('expenses').add(doc);
-      toast('Gasto agregado');
+      const ref = db.collection('groups').doc(cfg.groupId).collection('expenses');
+      if (editingExpenseId) {
+        await ref.doc(editingExpenseId).update({
+          ...baseDoc,
+          updatedBy: currentUser.uid,
+          updatedAt: firebase.firestore.FieldValue.serverTimestamp()
+        });
+        toast('Gasto actualizado');
+      } else {
+        await ref.add({
+          ...baseDoc,
+          createdBy: currentUser.uid,
+          createdAt: firebase.firestore.FieldValue.serverTimestamp()
+        });
+        toast('Gasto agregado');
+      }
       closeModal(expenseModal);
-      resetExpenseForm();
     } catch (e2) { toast(e2.message); }
   });
 
@@ -431,12 +578,14 @@
       const tipo = x.settlement ? 'settlement' : 'gasto';
       const desc = x.settlement ? (x.note || `Pago ${NAME_MAP[x.from]}→${NAME_MAP[x.to]}`) : x.desc;
       const payer = x.settlement ? `${NAME_MAP[x.from]}→${NAME_MAP[x.to]}` : NAME_MAP[x.payer] || x.payer;
-      const owedA = x.settlement ? '' : round2(x.oweA ?? x.amount/2);
-      const owedB = x.settlement ? '' : round2(x.oweB ?? x.amount/2);
+      const isPending = x.amountPending === true;
+      const amountCell = x.settlement ? round2(x.amount) : isPending ? 'PENDIENTE' : round2(x.amount);
+      const owedA = (x.settlement || isPending) ? '' : round2(x.oweA ?? x.amount/2);
+      const owedB = (x.settlement || isPending) ? '' : round2(x.oweB ?? x.amount/2);
       rows.push([
         x.date.toDate().toISOString().slice(0,10),
         desc,
-        round2(x.amount),
+        amountCell,
         payer,
         x.cat||'',
         tipo,
@@ -459,10 +608,12 @@
 
   function computeBalances(expList = expenses, setList = settlements){
     const totals = expList.reduce((acc,it)=>{
-      const oweA = round2(it.oweA ?? it.amount/2);
-      const oweB = round2(it.oweB ?? it.amount/2);
-      acc.total += round2(it.amount);
-      if (it.payer === 'A') acc.paidA += round2(it.amount); else acc.paidB += round2(it.amount);
+      if (it.amountPending === true) { return acc; }
+      const amount = round2(it.amount);
+      const oweA = round2(it.oweA ?? amount/2);
+      const oweB = round2(it.oweB ?? amount/2);
+      acc.total += amount;
+      if (it.payer === 'A') acc.paidA += amount; else acc.paidB += amount;
       acc.oweA += oweA;
       acc.oweB += oweB;
       return acc;
@@ -514,34 +665,53 @@
             </div>
             <div class="item__row item__row--bottom">
               <span class="meta">Registrado por ${NAME_MAP[it.from]}</span>
-              <button class="btn ghost small" data-id="${it.id}">Eliminar</button>
+              <button class="btn ghost small" type="button" data-delete-id="${it.id}">Eliminar</button>
             </div>
           `;
         } else {
-          const payerClass = it.payer === 'A' ? ' payer-a' : it.payer === 'B' ? ' payer-b' : '';
-          li.className = `item${payerClass}`;
-          const shareA = round2(it.oweA ?? it.amount/2);
-          const shareB = round2(it.oweB ?? it.amount/2);
+          const isPending = it.amountPending === true;
+          const payerClass = it.payer === 'A' ? 'payer-a' : it.payer === 'B' ? 'payer-b' : '';
+          const classes = ['item'];
+          if (payerClass) classes.push(payerClass);
+          if (isPending) classes.push('pending');
+          li.className = classes.join(' ');
+          const payerLabel = NAME_MAP[it.payer] || it.payer || '—';
+          let shareText;
+          if (isPending) {
+            shareText = 'Monto pendiente de definir';
+          } else {
+            const shareA = round2(it.oweA ?? it.amount/2);
+            const shareB = round2(it.oweB ?? it.amount/2);
+            shareText = `${NAME_A}: ${formatMoney(shareA)} · ${NAME_B}: ${formatMoney(shareB)}`;
+          }
+          const amountHtml = isPending
+            ? '<div class="item__amount item__amount--pending">Monto a definir</div>'
+            : `<div class="item__amount">${formatMoney(it.amount)}</div>`;
           li.innerHTML = `
             <div class="item__row item__row--top">
               <div class="item__title">
                 <strong>${it.desc}</strong>
                 ${it.cat ? `<span class="tag">${it.cat}</span>` : ''}
               </div>
-              <div class="item__amount">${formatMoney(it.amount)}</div>
+              ${amountHtml}
             </div>
             <div class="item__row item__row--middle">
               <span class="meta">${formatDate(it.date)}</span>
-              <span class="meta">Pagó ${NAME_MAP[it.payer] || it.payer}</span>
+              <span class="meta">Pagó ${payerLabel}</span>
             </div>
             <div class="item__row item__row--bottom">
-              <span class="shares">${NAME_A}: ${formatMoney(shareA)} · ${NAME_B}: ${formatMoney(shareB)}</span>
-              <button class="btn ghost small" data-id="${it.id}">Eliminar</button>
+              <span class="shares">${shareText}</span>
+              <div class="item__actions">
+                <button class="btn ghost small icon-only" type="button" data-edit-id="${it.id}" aria-label="Editar gasto"><span aria-hidden="true">✏️</span></button>
+                <button class="btn ghost small" type="button" data-delete-id="${it.id}">Eliminar</button>
+              </div>
             </div>
           `;
         }
-        const btn = li.querySelector('button');
-        if (btn) btn.addEventListener('click', () => del(it.id));
+        const deleteBtn = li.querySelector('[data-delete-id]');
+        if (deleteBtn) deleteBtn.addEventListener('click', () => del(it.id));
+        const editBtn = li.querySelector('[data-edit-id]');
+        if (editBtn) editBtn.addEventListener('click', () => startEditExpense(it));
         listEl.appendChild(li);
       }
     }
@@ -607,7 +777,6 @@
       await db.collection('groups').doc(cfg.groupId).collection('expenses').add(doc);
       toast('Pago registrado');
       closeModal(settlementModal);
-      resetSettlementForm();
       render();
     }catch(e2){ toast(e2.message); }
   });
