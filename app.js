@@ -665,7 +665,10 @@
             </div>
             <div class="item__row item__row--bottom">
               <span class="meta">Registrado por ${NAME_MAP[it.from]}</span>
-              <button class="btn ghost small" type="button" data-delete-id="${it.id}">Eliminar</button>
+              <button class="btn ghost small" type="button" data-delete-id="${it.id}">
+                <span class="icon" aria-hidden="true">❌</span>
+                <span class="label">Eliminar</span>
+              </button>
             </div>
           `;
         } else {
@@ -702,8 +705,11 @@
             <div class="item__row item__row--bottom">
               <span class="shares">${shareText}</span>
               <div class="item__actions">
-                <button class="btn ghost small icon-only" type="button" data-edit-id="${it.id}" aria-label="Editar gasto"><span aria-hidden="true">✏️</span></button>
-                <button class="btn ghost small" type="button" data-delete-id="${it.id}">Eliminar</button>
+                <button class="btn ghost small icon-only" type="button" data-edit-id="${it.id}" aria-label="Editar gasto"><span class="icon" aria-hidden="true">✏️</span></button>
+                <button class="btn ghost small" type="button" data-delete-id="${it.id}">
+                  <span class="icon" aria-hidden="true">❌</span>
+                  <span class="label">Eliminar</span>
+                </button>
               </div>
             </div>
           `;
