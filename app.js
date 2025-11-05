@@ -665,7 +665,7 @@
             </div>
             <div class="item__row item__row--bottom">
               <span class="meta">Registrado por ${NAME_MAP[it.from]}</span>
-              <button class="btn ghost small" type="button" data-delete-id="${it.id}">
+              <button class="btn ghost small item__action-btn" type="button" data-delete-id="${it.id}" aria-label="Eliminar gasto">
                 <span class="icon" aria-hidden="true">❌</span>
                 <span class="label">Eliminar</span>
               </button>
@@ -705,8 +705,11 @@
             <div class="item__row item__row--bottom">
               <span class="shares">${shareText}</span>
               <div class="item__actions">
-                <button class="btn ghost small icon-only" type="button" data-edit-id="${it.id}" aria-label="Editar gasto"><span class="icon" aria-hidden="true">✏️</span></button>
-                <button class="btn ghost small" type="button" data-delete-id="${it.id}">
+                <button class="btn ghost small item__action-btn" type="button" data-edit-id="${it.id}" aria-label="Editar gasto">
+                  <span class="icon" aria-hidden="true">✏️</span>
+                  <span class="label">Editar</span>
+                </button>
+                <button class="btn ghost small item__action-btn" type="button" data-delete-id="${it.id}" aria-label="Eliminar gasto">
                   <span class="icon" aria-hidden="true">❌</span>
                   <span class="label">Eliminar</span>
                 </button>
@@ -722,28 +725,32 @@
       }
     }
 
-    const { paidA, paidB, oweA, oweB, total, balanceA, balanceB } = computeBalances();
+    const summaryData = computeBalances();
     const { balanceA: overallBalanceA } = computeBalances(allExpenses, allSettlements);
-    const summaryHtml = `
-      <div class="box summary__total">
-        <div class="kicker">Total período</div>
-        <strong>${formatMoney(total)}</strong>
-      </div>
-      <div class="box summary__payer">
-        <div class="kicker">Pagó ${NAME_A}</div>
-        <strong>${formatMoney(paidA)}</strong>
-        <div class="meta">Debe ${formatMoney(oweA)}</div>
-      </div>
-      <div class="box summary__payer">
-        <div class="kicker">Pagó ${NAME_B}</div>
-        <strong>${formatMoney(paidB)}</strong>
-        <div class="meta">Debe ${formatMoney(oweB)}</div>
-      </div>
-      <div class="box summary__balance">
-        <div class="kicker">Saldo actual</div>
-        <strong>${balanceA > 0 ? `${NAME_B} debe ${formatMoney(balanceA)} a ${NAME_A}` : balanceA < 0 ? `${NAME_A} debe ${formatMoney(Math.abs(balanceA))} a ${NAME_B}` : 'Están a mano'}</strong>
-      </div>`;
-    summaryEl.innerHTML = summaryHtml;
+
+    if (summaryEl) {
+      const { paidA, paidB, oweA, oweB, total, balanceA } = summaryData;
+      const summaryHtml = `
+        <div class="box summary__total">
+          <div class="kicker">Total período</div>
+          <strong>${formatMoney(total)}</strong>
+        </div>
+        <div class="box summary__payer">
+          <div class="kicker">Pagó ${NAME_A}</div>
+          <strong>${formatMoney(paidA)}</strong>
+          <div class="meta">Debe ${formatMoney(oweA)}</div>
+        </div>
+        <div class="box summary__payer">
+          <div class="kicker">Pagó ${NAME_B}</div>
+          <strong>${formatMoney(paidB)}</strong>
+          <div class="meta">Debe ${formatMoney(oweB)}</div>
+        </div>
+        <div class="box summary__balance">
+          <div class="kicker">Saldo actual</div>
+          <strong>${balanceA > 0 ? `${NAME_B} debe ${formatMoney(balanceA)} a ${NAME_A}` : balanceA < 0 ? `${NAME_A} debe ${formatMoney(Math.abs(balanceA))} a ${NAME_B}` : 'Están a mano'}</strong>
+        </div>`;
+      summaryEl.innerHTML = summaryHtml;
+    }
 
     updateBalanceBanner(overallBalanceA);
   }
